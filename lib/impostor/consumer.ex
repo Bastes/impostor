@@ -25,6 +25,9 @@ defmodule Impostor.Consumer do
           msg.channel_id,
           embeds: [embed]
         )
+
+      _ ->
+        :noop
     end
   end
 end
