@@ -9,6 +9,19 @@ defmodule Impostor.Consumer do
 
     case msg.content do
       "!new_impostor_game" ->
+        author = msg.author
+        player = %{
+          id: author.id,
+          global_name: author.global_name,
+          username: author.username
+        }
+        players =
+          GenServer.call(Impostor.Game, {:join, player})
+          |> Enum.map(fn %{global_name: global_name, username: username} ->
+            "#{global_name} (@#{username})"
+          end)
+          |> Enum.join("\n")
+
         embed =
           %Embed{}
           |> Embed.put_title("New Game of Impostor")
@@ -17,7 +30,7 @@ defmodule Impostor.Consumer do
             Let's prepare your new game.
 
             Players:
-            #{msg.author.global_name} (@#{msg.author.username})
+            #{players}
             """
           )
 
