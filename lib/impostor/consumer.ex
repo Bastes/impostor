@@ -16,7 +16,7 @@ defmodule Impostor.Consumer do
           username: author.username
         }
         players =
-          GenServer.call(Impostor.Game, {:join, player})
+          Impostor.Game.join(player)
           |> Enum.map(fn %{global_name: global_name, username: username} ->
             "#{global_name} (@#{username})"
           end)
