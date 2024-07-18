@@ -3,6 +3,7 @@ defmodule Impostor.Application do
 
   def start(_type, _args) do
     children = [
+      Impostor.Game,
       Impostor.Consumer
     ]
 
