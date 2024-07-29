@@ -11,15 +11,7 @@ defmodule Impostor.Consumer do
           msg.author
           |> new_player([])
           |> Impostor.Game.join()
-          |> case do
-            {:ok, players} ->
-              players
-
-            {:error, error, players} ->
-              IO.puts("Error: #{error}")
-
-              players
-          end
+          |> handle_game_errors()
           |> Enum.map(fn %{global_name: global_name, username: username} ->
             "#{global_name} (@#{username})"
           end)
@@ -45,6 +37,13 @@ defmodule Impostor.Consumer do
       _ ->
         :noop
     end
+  end
+
+  defp handle_game_errors({:ok, players}), do: players
+  defp handle_game_errors({:error, error, players}) do
+    IO.puts("Error: #{error}")
+
+    players
   end
 
   defp new_player(author, _players) do
