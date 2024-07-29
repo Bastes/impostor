@@ -2,11 +2,15 @@ defmodule Impostor.Game do
   use GenServer
 
   def new(player) do
-    GenServer.call(Impostor.Game, {:new, player})
+    GenServer.call(__MODULE__, {:new, player})
   end
 
   def join(player) do
-    GenServer.call(Impostor.Game, {:join, player})
+    GenServer.call(__MODULE__, {:join, player})
+  end
+
+  def players() do
+    GenServer.call(__MODULE__, :players)
   end
 
   def start_link(game) when is_list(game) do
@@ -31,5 +35,9 @@ defmodule Impostor.Game do
       players = [player | players]
       {:reply, {:ok, players}, players}
     end
+  end
+
+  def handle_call(:players, _from, players) do
+    {:reply, players, players}
   end
 end

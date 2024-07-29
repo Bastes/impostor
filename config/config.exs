@@ -8,3 +8,5 @@ config :nostrum,
     :message_content,
     :direct_messages
   ]
+
+config :impostor, mono_allowed: (System.get_env("IMPOSTOR_MONO") == "true")

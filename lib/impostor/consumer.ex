@@ -8,7 +8,7 @@ defmodule Impostor.Consumer do
     case msg.content do
       "!new_impostor_game" ->
         msg.author
-        |> new_player([])
+        |> new_player()
         |> Impostor.Game.new()
         |> handle_game_errors()
         |> render()
@@ -26,17 +26,28 @@ defmodule Impostor.Consumer do
 
     case interaction.data.custom_id do
       "JOIN" ->
-        interaction.user
-        |> new_player([])
-        |> Impostor.Game.join()
-        |> handle_game_errors()
-        |> render()
-        |> then(&Api.edit_message(interaction.channel_id, interaction.message.id, &1))
+        players = Impostor.Game.players()
 
-        Api.create_interaction_response(
-          interaction,
-          %{type: 4, data: %{content: "Very well, you are all joined", flags: @ephemeral}}
-        )
+        interaction.user
+        |> new_player(players)
+        |> Impostor.Game.join()
+        |> case do
+          {:ok, players} ->
+            players
+            |> render()
+            |> then(&Api.edit_message(interaction.channel_id, interaction.message.id, &1))
+
+            Api.create_interaction_response(
+              interaction,
+              %{type: 4, data: %{content: "Very well, you are all joined", flags: @ephemeral}}
+            )
+
+          {:error, error, _players} ->
+            Api.create_interaction_response(
+              interaction,
+              %{type: 4, data: %{content: "⚠️ #{error}", flags: @ephemeral}}
+            )
+        end
 
       _ ->
         :ignore
@@ -51,20 +62,43 @@ defmodule Impostor.Consumer do
     players
   end
 
-  defp new_player(author, _players) do
+  defp new_player(%{id: id} = author, players \\ []) do
     player = %{
-      id: author.id,
+      id: id,
       global_name: author.global_name,
       username: author.username
     }
+
+    if Application.get_env(:impostor, :mono_allowed) do
+      version =
+        players
+        |> Stream.filter(&(&1.id == id))
+        |> Enum.max_by(& &1.version, fn -> %{version: 0} end)
+        |> then(& &1.version)
+
+      player
+      |> Map.put(:version, version + 1)
+    else
+      player
+    end
+  end
+
+  defp render_player(%{version: version} = player) do
+    player
+    |> Map.drop([:version])
+    |> Map.update!(:username, &(&1 <> " - #{version}"))
+    |> render_player()
+  end
+
+  defp render_player(%{global_name: global_name, username: username}) do
+    "#{global_name} (@#{username})"
   end
 
   defp render(players) do
     players =
       players
-      |> Enum.map(fn %{global_name: global_name, username: username} ->
-        "#{global_name} (@#{username})"
-      end)
+      |> Enum.reverse()
+      |> Stream.map(&render_player/1)
       |> Enum.join("\n")
 
     embed =
