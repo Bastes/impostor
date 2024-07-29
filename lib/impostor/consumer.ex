@@ -11,7 +11,8 @@ defmodule Impostor.Consumer do
         |> new_player([])
         |> Impostor.Game.new()
         |> handle_game_errors()
-        |> render(msg.channel_id)
+        |> render()
+        |> then(&Api.create_message(msg.channel_id, &1))
 
       _ ->
         :noop
@@ -29,7 +30,8 @@ defmodule Impostor.Consumer do
         |> new_player([])
         |> Impostor.Game.join()
         |> handle_game_errors()
-        |> render(interaction.channel_id)
+        |> render()
+        |> then(&Api.edit_message(interaction.channel_id, interaction.message.id, &1))
 
         Api.create_interaction_response(
           interaction,
@@ -57,7 +59,7 @@ defmodule Impostor.Consumer do
     }
   end
 
-  defp render(players, channel_id) do
+  defp render(players) do
     players =
       players
       |> Enum.map(fn %{global_name: global_name, username: username} ->
@@ -86,10 +88,9 @@ defmodule Impostor.Consumer do
         ]
       )
 
-    Api.create_message(
-      channel_id,
+    [
       embeds: [embed],
       components: [component]
-    )
+    ]
   end
 end

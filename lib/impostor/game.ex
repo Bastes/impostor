@@ -33,4 +33,3 @@ defmodule Impostor.Game do
     end
   end
 end
-
