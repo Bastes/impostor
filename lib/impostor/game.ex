@@ -16,8 +16,12 @@ defmodule Impostor.Game do
 
   @impl true
   def handle_call({:join, player}, _from, players) do
-    players = [player | players]
-    {:reply, players, players}
+    if player in players do
+      {:reply, {:error, "player already joined #{inspect(player)}", players}, players}
+    else
+      players = [player | players]
+      {:reply, {:ok, players}, players}
+    end
   end
 end
 

@@ -5,18 +5,21 @@ defmodule Impostor.Consumer do
   alias Nostrum.Struct.Embed
 
   def handle_event({:MESSAGE_CREATE, msg, _ws_state}) do
-    IO.inspect(msg, label: "msg")
-
     case msg.content do
       "!new_impostor_game" ->
-        author = msg.author
-        player = %{
-          id: author.id,
-          global_name: author.global_name,
-          username: author.username
-        }
         players =
-          Impostor.Game.join(player)
+          msg.author
+          |> new_player([])
+          |> Impostor.Game.join()
+          |> case do
+            {:ok, players} ->
+              players
+
+            {:error, error, players} ->
+              IO.puts("Error: #{error}")
+
+              players
+          end
           |> Enum.map(fn %{global_name: global_name, username: username} ->
             "#{global_name} (@#{username})"
           end)
@@ -42,5 +45,13 @@ defmodule Impostor.Consumer do
       _ ->
         :noop
     end
+  end
+
+  defp new_player(author, _players) do
+    player = %{
+      id: author.id,
+      global_name: author.global_name,
+      username: author.username
+    }
   end
 end
