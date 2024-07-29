@@ -20,14 +20,12 @@ defmodule Impostor.Consumer do
         embed =
           %Embed{}
           |> Embed.put_title("New Game of Impostor")
-          |> Embed.put_description(
-            """
-            Let's prepare your new game.
+          |> Embed.put_description("""
+          Let's prepare your new game.
 
-            Players:
-            #{players}
-            """
-          )
+          Players:
+          #{players}
+          """)
 
         Api.create_message(
           msg.channel_id,
@@ -40,6 +38,7 @@ defmodule Impostor.Consumer do
   end
 
   defp handle_game_errors({:ok, players}), do: players
+
   defp handle_game_errors({:error, error, players}) do
     IO.puts("Error: #{error}")
 
