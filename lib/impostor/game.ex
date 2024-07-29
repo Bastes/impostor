@@ -1,6 +1,10 @@
 defmodule Impostor.Game do
   use GenServer
 
+  def new(player) do
+    GenServer.call(Impostor.Game, {:new, player})
+  end
+
   def join(player) do
     GenServer.call(Impostor.Game, {:join, player})
   end
@@ -15,6 +19,11 @@ defmodule Impostor.Game do
   end
 
   @impl true
+  def handle_call({:new, player}, _from, _players) do
+    players = [player]
+    {:reply, {:ok, players}, players}
+  end
+
   def handle_call({:join, player}, _from, players) do
     if player in players do
       {:reply, {:error, "player already joined #{inspect(player)}", players}, players}
