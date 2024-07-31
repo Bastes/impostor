@@ -1,6 +1,6 @@
 defmodule Impostor.Game.Player do
   @enforce_keys [:id, :global_name, :username]
-  defstruct [:id, :global_name, :username, :version]
+  defstruct [:id, :global_name, :username, :secret_word, :words, :version]
 
   def new(%{id: _, global_name: _, username: _} = data) do
     struct(__MODULE__, data)
