@@ -7,10 +7,12 @@ defmodule Impostor.Consumer do
   def handle_event({:MESSAGE_CREATE, msg, _ws_state}) do
     case msg.content do
       "!new_impostor_game" ->
-        msg.author
-        |> new_player()
-        |> Impostor.Game.new()
-        |> handle_game_errors()
+        {:ok, game} =
+          msg.author
+          |> new_player()
+          |> Impostor.Game.Server.new()
+
+        game
         |> render()
         |> then(&Api.create_message(msg.channel_id, &1))
 
@@ -26,19 +28,19 @@ defmodule Impostor.Consumer do
 
     case interaction.data.custom_id do
       "JOIN" ->
-        players = Impostor.Game.players()
+        players = Impostor.Game.Server.players()
 
         interaction.user
         |> new_player(players)
-        |> Impostor.Game.join()
+        |> Impostor.Game.Server.join()
         |> case do
-          {:ok, players} ->
-            players
+          {:ok, game} ->
+            game
             |> render()
             |> then(&Map.new/1)
             |> then(&Api.create_interaction_response(interaction, %{type: 7, data: &1}))
 
-          {:error, error, _players} ->
+          {:error, error} ->
             Api.create_interaction_response(
               interaction,
               %{type: 4, data: %{content: "⚠️ #{error}", flags: @ephemeral}}
@@ -48,14 +50,6 @@ defmodule Impostor.Consumer do
       _ ->
         :ignore
     end
-  end
-
-  defp handle_game_errors({:ok, players}), do: players
-
-  defp handle_game_errors({:error, error, players}) do
-    IO.puts("Error: #{error}")
-
-    players
   end
 
   defp new_player(%{id: id} = author, players \\ []) do
@@ -75,7 +69,7 @@ defmodule Impostor.Consumer do
     |> Impostor.Game.Player.new()
   end
 
-  defp render(players) do
+  defp render(%{players: players} = _game) do
     players =
       players
       |> Enum.reverse()

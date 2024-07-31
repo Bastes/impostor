@@ -3,7 +3,7 @@ defmodule Impostor.Application do
 
   def start(_type, _args) do
     children = [
-      Impostor.Game,
+      Impostor.Game.Server,
       Impostor.Consumer
     ]
 
@@ -12,4 +12,3 @@ defmodule Impostor.Application do
     Supervisor.start_link(children, opts)
   end
 end
-
