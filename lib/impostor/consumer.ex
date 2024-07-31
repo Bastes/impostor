@@ -28,11 +28,31 @@ defmodule Impostor.Consumer do
 
     case interaction.data.custom_id do
       "JOIN" ->
-        players = Impostor.Game.Server.players()
+        player = new_player(interaction.user)
 
-        interaction.user
-        |> new_player(players)
-        |> Impostor.Game.Server.join()
+        case Impostor.Game.Server.players() do
+          [^player | _] ->
+            with {:ok, %{players: players} = game} <- Impostor.Game.Server.start() do
+              for player <- players,
+                  dm_channel = Api.create_dm!(player.id) do
+                message =
+                  case player.version do
+                    nil ->
+                      player.secret_word
+
+                    version ->
+                      "#{version} - #{player.secret_word}"
+                  end
+
+                Api.create_message(dm_channel.id, message)
+              end
+
+              {:ok, game}
+            end
+
+          _players ->
+            Impostor.Game.Server.join(player)
+        end
         |> case do
           {:ok, game} ->
             game
@@ -65,13 +85,13 @@ defmodule Impostor.Consumer do
     end
   end
 
-  defp new_player(%{id: id} = author, players \\ []) do
+  defp new_player(author) do
     author
     |> Map.take([:id, :global_name, :username])
     |> Impostor.Game.Player.new()
   end
 
-  defp new_clone(%{id: id} = author, players \\ []) do
+  defp new_clone(%{id: id} = author, players) do
     version =
       players
       |> Stream.filter(&(&1.id == id))
@@ -84,10 +104,9 @@ defmodule Impostor.Consumer do
     |> Impostor.Game.Player.new()
   end
 
-  defp render(%{players: players} = _game) do
+  defp render(%{players: players, state: :lobby} = _game) do
     players =
       players
-      |> Enum.reverse()
       |> Stream.map(&Impostor.Game.Player.screen_name/1)
       |> Stream.map(&("* " <> &1))
       |> Enum.join("\n")
@@ -131,5 +150,33 @@ defmodule Impostor.Consumer do
       embeds: [embed],
       components: [component]
     ]
+  end
+
+  defp render(%{players: players, state: :started} = _game) do
+    [player_1_nick | _] =
+      players_nicks =
+      Enum.map(players, &Impostor.Game.Player.screen_name/1)
+
+    players =
+      Enum.map(players_nicks, &("* " <> &1))
+      |> Enum.join("\n")
+
+    embed =
+      %Embed{}
+      |> Embed.put_title("Game of Impostor in progress.")
+      |> Embed.put_description("""
+      Players:
+      #{players}
+
+      #{player_1_nick}, this is your turn!
+
+      Give your word with the `!word` command:
+
+      ```
+      !word [your word here]
+      ```
+      """)
+
+    [embeds: [embed]]
   end
 end
