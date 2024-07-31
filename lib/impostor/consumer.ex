@@ -35,12 +35,8 @@ defmodule Impostor.Consumer do
           {:ok, players} ->
             players
             |> render()
-            |> then(&Api.edit_message(interaction.channel_id, interaction.message.id, &1))
-
-            Api.create_interaction_response(
-              interaction,
-              %{type: 4, data: %{content: "Very well, you are all joined", flags: @ephemeral}}
-            )
+            |> then(&Map.new/1)
+            |> then(&Api.create_interaction_response(interaction, %{type: 7, data: &1}))
 
           {:error, error, _players} ->
             Api.create_interaction_response(
