@@ -63,11 +63,7 @@ defmodule Impostor.Consumer do
   end
 
   defp new_player(%{id: id} = author, players \\ []) do
-    player = %{
-      id: id,
-      global_name: author.global_name,
-      username: author.username
-    }
+    player_data = Map.take(author, [:id, :global_name, :username])
 
     if Application.get_env(:impostor, :mono_allowed) do
       version =
@@ -76,29 +72,18 @@ defmodule Impostor.Consumer do
         |> Enum.max_by(& &1.version, fn -> %{version: 0} end)
         |> then(& &1.version)
 
-      player
-      |> Map.put(:version, version + 1)
+      Map.put(player_data, :version, version + 1)
     else
-      player
+      player_data
     end
-  end
-
-  defp render_player(%{version: version} = player) do
-    player
-    |> Map.drop([:version])
-    |> Map.update!(:username, &(&1 <> " - #{version}"))
-    |> render_player()
-  end
-
-  defp render_player(%{global_name: global_name, username: username}) do
-    "#{global_name} (@#{username})"
+    |> Impostor.Game.Player.new()
   end
 
   defp render(players) do
     players =
       players
       |> Enum.reverse()
-      |> Stream.map(&render_player/1)
+      |> Stream.map(&Impostor.Game.Player.screen_name/1)
       |> Enum.join("\n")
 
     embed =
