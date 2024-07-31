@@ -47,25 +47,40 @@ defmodule Impostor.Consumer do
             )
         end
 
+      "CLONE" ->
+        players = Impostor.Game.Server.players()
+
+        {:ok, game} =
+          interaction.user
+          |> new_clone(players)
+          |> Impostor.Game.Server.join()
+
+        game
+        |> render()
+        |> then(&Map.new/1)
+        |> then(&Api.create_interaction_response(interaction, %{type: 7, data: &1}))
+
       _ ->
         :ignore
     end
   end
 
   defp new_player(%{id: id} = author, players \\ []) do
-    player_data = Map.take(author, [:id, :global_name, :username])
+    author
+    |> Map.take([:id, :global_name, :username])
+    |> Impostor.Game.Player.new()
+  end
 
-    if Application.get_env(:impostor, :mono_allowed) do
-      version =
-        players
-        |> Stream.filter(&(&1.id == id))
-        |> Enum.max_by(& &1.version, fn -> %{version: 0} end)
-        |> then(& &1.version)
+  defp new_clone(%{id: id} = author, players \\ []) do
+    version =
+      players
+      |> Stream.filter(&(&1.id == id))
+      |> Stream.map(&(&1.version || 0))
+      |> Enum.max(fn -> %{version: 0} end)
 
-      Map.put(player_data, :version, version + 1)
-    else
-      player_data
-    end
+    author
+    |> Map.take([:id, :global_name, :username])
+    |> Map.put(:version, version + 1)
     |> Impostor.Game.Player.new()
   end
 
@@ -74,6 +89,7 @@ defmodule Impostor.Consumer do
       players
       |> Enum.reverse()
       |> Stream.map(&Impostor.Game.Player.screen_name/1)
+      |> Stream.map(&("* " <> &1))
       |> Enum.join("\n")
 
     embed =
@@ -86,16 +102,30 @@ defmodule Impostor.Consumer do
       #{players}
       """)
 
-    component =
-      Nostrum.Struct.Component.ActionRow.action_row(
-        components: [
-          Nostrum.Struct.Component.Button.interaction_button(
-            "Join the game",
-            "JOIN",
-            style: Nostrum.Constants.ButtonStyle.primary()
-          )
-        ]
+    buttons = [
+      Nostrum.Struct.Component.Button.interaction_button(
+        "Join the game",
+        "JOIN",
+        style: Nostrum.Constants.ButtonStyle.primary()
       )
+    ]
+
+    buttons =
+      if Application.get_env(:impostor, :mono_allowed) do
+        [
+          Nostrum.Struct.Component.Button.interaction_button(
+            "Clone me!",
+            "CLONE",
+            style: Nostrum.Constants.ButtonStyle.danger()
+          )
+          | buttons
+        ]
+      else
+        buttons
+      end
+
+    component =
+      Nostrum.Struct.Component.ActionRow.action_row(components: buttons)
 
     [
       embeds: [embed],
