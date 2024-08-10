@@ -12,9 +12,23 @@ defmodule Impostor.Consumer do
           |> new_player()
           |> Impostor.Game.Server.new()
 
+        {:ok, message} =
+          game
+          |> render()
+          |> then(&Api.create_message(msg.channel_id, &1))
+
+        {:ok, _game} =
+          Impostor.Game.Server.set_message_id(message.id)
+
+      "!word " <> word ->
+        Api.delete_message(msg)
+
+        {:ok, game} =
+          Impostor.Game.Server.play_word(msg.author.id, word)
+
         game
         |> render()
-        |> then(&Api.create_message(msg.channel_id, &1))
+        |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
 
       _ ->
         :noop
@@ -154,11 +168,11 @@ defmodule Impostor.Consumer do
 
   defp render(%{players: players, state: :started} = _game) do
     [player_1_nick | _] =
-      players_nicks =
-      Enum.map(players, &Impostor.Game.Player.screen_name/1)
+      players_nicks_and_words =
+      Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)
 
     players =
-      Enum.map(players_nicks, &("* " <> &1))
+      Enum.map(players_nicks_and_words, &("* " <> &1))
       |> Enum.join("\n")
 
     embed =
@@ -177,6 +191,6 @@ defmodule Impostor.Consumer do
       ```
       """)
 
-    [embeds: [embed]]
+    [embeds: [embed], components: []]
   end
 end

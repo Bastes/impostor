@@ -1,6 +1,6 @@
 defmodule Impostor.Game do
   @enforce_keys [:players]
-  defstruct players: [], state: :lobby
+  defstruct message_id: nil, players: [], state: :lobby
 
   @dictionary ~w[
     ardoise
@@ -55,4 +55,28 @@ defmodule Impostor.Game do
   end
 
   def start(_game), do: {:error, "game already started"}
+
+  def play_word(%__MODULE__{state: state} = game) when state == :lobby do
+    {:error, "cannot play words yet, the game hasn':w
+      't started"}
+  end
+
+  def play_word(
+        %__MODULE__{players: [%{id: first_player_id} = player | players], state: state} = game,
+        player_id,
+        word
+      )
+      when state == :started and first_player_id == player_id do
+    game =
+      player
+      |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
+      |> then(&List.insert_at(players, -1, &1))
+      |> then(&Map.put(game, :players, &1))
+
+    {:ok, game}
+  end
+
+  def play_word(%__MODULE__{} = _game, player_id, _word) do
+    {:error, "this is not #{player_id}'s turn"}
+  end
 end

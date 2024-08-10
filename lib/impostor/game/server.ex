@@ -5,12 +5,20 @@ defmodule Impostor.Game.Server do
     GenServer.call(__MODULE__, {:new, player})
   end
 
+  def set_message_id(message_id) do
+    GenServer.call(__MODULE__, {:set_message_id, message_id})
+  end
+
   def join(player) do
     GenServer.call(__MODULE__, {:join, player})
   end
 
   def start() do
     GenServer.call(__MODULE__, :start)
+  end
+
+  def play_word(player_id, word) do
+    GenServer.call(__MODULE__, {:play_word, player_id, word})
   end
 
   def players() do
@@ -33,6 +41,12 @@ defmodule Impostor.Game.Server do
     {:reply, {:ok, game}, game}
   end
 
+  def handle_call({:set_message_id, message_id}, _from, game) do
+    game = Map.put(game, :message_id, message_id)
+
+    {:reply, {:ok, game}, game}
+  end
+
   def handle_call({:join, player}, _from, game) do
     Impostor.Game.join(game, player)
     |> case do
@@ -46,6 +60,17 @@ defmodule Impostor.Game.Server do
 
   def handle_call(:start, _from, game) do
     Impostor.Game.start(game)
+    |> case do
+      {:ok, game} ->
+        {:reply, {:ok, game}, game}
+
+      {:error, error} ->
+        {:reply, {:error, error}, game}
+    end
+  end
+
+  def handle_call({:play_word, player_id, word}, _from, game) do
+    Impostor.Game.play_word(game, player_id, word)
     |> case do
       {:ok, game} ->
         {:reply, {:ok, game}, game}
