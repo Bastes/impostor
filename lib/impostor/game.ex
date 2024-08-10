@@ -56,17 +56,16 @@ defmodule Impostor.Game do
 
   def start(_game), do: {:error, "game already started"}
 
-  def play_word(%__MODULE__{state: state} = game) when state == :lobby do
-    {:error, "cannot play words yet, the game hasn':w
-      't started"}
+  def play_word(%__MODULE__{state: state}) when state == :lobby do
+    {:error, "cannot play words yet, the game hasn't started"}
   end
 
   def play_word(
-        %__MODULE__{players: [%{id: first_player_id} = player | players], state: state} = game,
+        %__MODULE__{players: [%{id: first_player_id} = player | players], state: :started} = game,
         player_id,
         word
       )
-      when state == :started and first_player_id == player_id do
+      when first_player_id == player_id do
     game =
       player
       |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
@@ -76,7 +75,7 @@ defmodule Impostor.Game do
     {:ok, game}
   end
 
-  def play_word(%__MODULE__{} = _game, player_id, _word) do
+  def play_word(%__MODULE__{}, player_id, _word) do
     {:error, "this is not #{player_id}'s turn"}
   end
 end

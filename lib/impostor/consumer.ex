@@ -47,18 +47,21 @@ defmodule Impostor.Consumer do
         case Impostor.Game.Server.players() do
           [^player | _] ->
             with {:ok, %{players: players} = game} <- Impostor.Game.Server.start() do
-              for player <- players,
-                  dm_channel = Api.create_dm!(player.id) do
-                message =
-                  case player.version do
-                    nil ->
-                      player.secret_word
+              for player <- players do
+                Task.start_link(fn ->
+                  dm_channel = Api.create_dm!(player.id)
 
-                    version ->
-                      "#{version} - #{player.secret_word}"
-                  end
+                  message =
+                    case player.version do
+                      nil ->
+                        player.secret_word
 
-                Api.create_message(dm_channel.id, message)
+                      version ->
+                        "#{version} - #{player.secret_word}"
+                    end
+
+                  Api.create_message(dm_channel.id, message)
+                end)
               end
 
               {:ok, game}
