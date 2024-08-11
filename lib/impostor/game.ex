@@ -71,22 +71,34 @@ defmodule Impostor.Game do
         word
       )
       when first_player_id == player_id do
+    word =
+      word
+      |> String.trim()
+      |> String.downcase()
+
     duplicate_word? =
       Enum.any?(players, fn
         %{words: nil} -> false
         %{words: words} -> Enum.any?(words, &(&1 == word))
       end)
 
-    if duplicate_word? do
-      {:error, "the word #{word} has already been chosen"}
-    else
-      game =
-        player
-        |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
-        |> then(&List.insert_at(other_players, -1, &1))
-        |> then(&Map.put(game, :players, &1))
+    is_secret_word? = player.secret_word == word
 
-      {:ok, game}
+    cond do
+      duplicate_word? ->
+        {:error, "the word #{word} has already been chosen"}
+
+      is_secret_word? ->
+        {:error, "don't play your secret word, silly!"}
+
+      true ->
+        game =
+          player
+          |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
+          |> then(&List.insert_at(other_players, -1, &1))
+          |> then(&Map.put(game, :players, &1))
+
+        {:ok, game}
     end
   end
 
