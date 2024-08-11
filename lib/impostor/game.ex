@@ -60,19 +60,34 @@ defmodule Impostor.Game do
     {:error, "cannot play words yet, the game hasn't started"}
   end
 
+  # def play_word(%__MODULE__{state: :started}, )
+
   def play_word(
-        %__MODULE__{players: [%{id: first_player_id} = player | players], state: :started} = game,
+        %__MODULE__{
+          players: [%{id: first_player_id} = player | other_players] = players,
+          state: :started
+        } = game,
         player_id,
         word
       )
       when first_player_id == player_id do
-    game =
-      player
-      |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
-      |> then(&List.insert_at(players, -1, &1))
-      |> then(&Map.put(game, :players, &1))
+    duplicate_word? =
+      Enum.any?(players, fn
+        %{words: nil} -> false
+        %{words: words} -> Enum.any?(words, &(&1 == word))
+      end)
 
-    {:ok, game}
+    if duplicate_word? do
+      {:error, "the word #{word} has already been chosen"}
+    else
+      game =
+        player
+        |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
+        |> then(&List.insert_at(other_players, -1, &1))
+        |> then(&Map.put(game, :players, &1))
+
+      {:ok, game}
+    end
   end
 
   def play_word(%__MODULE__{}, player_id, _word) do

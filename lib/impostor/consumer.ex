@@ -23,12 +23,18 @@ defmodule Impostor.Consumer do
       "!word " <> word ->
         Api.delete_message(msg)
 
-        {:ok, game} =
-          Impostor.Game.Server.play_word(msg.author.id, word)
+        player_id = msg.author.id
 
-        game
-        |> render()
-        |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
+        with {:ok, game} <- Impostor.Game.Server.play_word(player_id, word) do
+          game
+          |> render()
+          |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
+        else
+          {:error, message} ->
+            dm_channel = Api.create_dm!(player_id)
+
+            Api.create_message(dm_channel.id, "error: #{message}")
+        end
 
       _ ->
         :noop
