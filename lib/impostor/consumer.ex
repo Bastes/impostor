@@ -127,7 +127,7 @@ defmodule Impostor.Consumer do
     |> Impostor.Game.Player.new()
   end
 
-  defp render(%{players: players, state: :lobby} = _game) do
+  defp render(%{players: players, state: :phase_0_lobby} = _game) do
     players =
       players
       |> Stream.map(&Impostor.Game.Player.screen_name/1)
@@ -175,7 +175,7 @@ defmodule Impostor.Consumer do
     ]
   end
 
-  defp render(%{players: players, state: :started} = _game) do
+  defp render(%{players: players, state: :phase_1_words} = _game) do
     [player_1_nick | _] =
       players_nicks_and_words =
       Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)

@@ -1,6 +1,6 @@
 defmodule Impostor.Game do
   @enforce_keys [:players]
-  defstruct message_id: nil, players: [], state: :lobby
+  defstruct message_id: nil, players: [], state: :phase_0_lobby
 
   @dictionary ~w[
     ardoise
@@ -19,7 +19,7 @@ defmodule Impostor.Game do
     %__MODULE__{players: [player]}
   end
 
-  def join(%{players: players, state: :lobby} = game, player) do
+  def join(%{players: players, state: :phase_0_lobby} = game, player) do
     if player in players do
       {:error, "player already joined #{inspect(player)}"}
     else
@@ -31,7 +31,7 @@ defmodule Impostor.Game do
 
   def join(_game, _player), do: {:error, "game already started"}
 
-  def start(%{state: :lobby, players: players} = game) do
+  def start(%{state: :phase_0_lobby, players: players} = game) do
     [secret_word, impostor_word] =
       @dictionary |> Enum.shuffle() |> Enum.take(2)
 
@@ -48,7 +48,7 @@ defmodule Impostor.Game do
 
     game =
       game
-      |> Map.put(:state, :started)
+      |> Map.put(:state, :phase_1_words)
       |> Map.put(:players, players)
 
     {:ok, game}
@@ -56,16 +56,16 @@ defmodule Impostor.Game do
 
   def start(_game), do: {:error, "game already started"}
 
-  def play_word(%__MODULE__{state: state}) when state == :lobby do
+  def play_word(%__MODULE__{state: state}) when state == :phase_0_lobby do
     {:error, "cannot play words yet, the game hasn't started"}
   end
 
-  # def play_word(%__MODULE__{state: :started}, )
+  # def play_word(%__MODULE__{state: :phase_1_words}, )
 
   def play_word(
         %__MODULE__{
           players: [%{id: first_player_id} = player | other_players] = players,
-          state: :started
+          state: :phase_1_words
         } = game,
         player_id,
         word
