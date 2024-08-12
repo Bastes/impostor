@@ -60,8 +60,6 @@ defmodule Impostor.Game do
     {:error, "cannot play words yet, the game hasn't started"}
   end
 
-  # def play_word(%__MODULE__{state: :phase_1_words}, )
-
   def play_word(
         %__MODULE__{
           players: [%{id: first_player_id} = player | other_players] = players,
