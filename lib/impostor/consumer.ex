@@ -175,7 +175,7 @@ defmodule Impostor.Consumer do
     ]
   end
 
-  defp render(%{players: players, state: :phase_1_words} = _game) do
+  defp render(%{players: [player | _] = players, state: :phase_1_words} = _game) do
     [player_1_nick | _] =
       players_nicks_and_words =
       Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)
@@ -193,7 +193,7 @@ defmodule Impostor.Consumer do
 
       #{player_1_nick}, this is your turn!
 
-      Give your word with the `!word` command:
+      Give your word ##{length(player.words || []) + 1} with the `!word` command:
 
       ```
       !word [your word here]
