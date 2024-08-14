@@ -3,6 +3,7 @@ defmodule Impostor.Consumer do
 
   alias Nostrum.Api
   alias Nostrum.Struct.Embed
+  alias Impostor.Game.Player
 
   def handle_event({:MESSAGE_CREATE, msg, _ws_state}) do
     case msg.content do
@@ -23,16 +24,16 @@ defmodule Impostor.Consumer do
       "!word " <> word ->
         Api.delete_message(msg)
 
-        player_id = msg.author.id
+        author_id = msg.author.id
 
         {:ok, _game} =
-          with {:ok, game} <- Impostor.Game.Server.play_word(player_id, word) do
+          with {:ok, game} <- Impostor.Game.Server.play_word(author_id, word) do
             game
             |> render()
             |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
           else
             {:error, message} ->
-              dm_channel = Api.create_dm!(player_id)
+              dm_channel = Api.create_dm!(author_id)
 
               Api.create_message(dm_channel.id, "error: #{message}")
 
@@ -58,7 +59,7 @@ defmodule Impostor.Consumer do
             with {:ok, %{players: players} = game} <- Impostor.Game.Server.start() do
               for player <- players do
                 Task.start_link(fn ->
-                  dm_channel = Api.create_dm!(player.id)
+                  dm_channel = Api.create_dm!(Player.discord_id(player))
 
                   message =
                     case player.version do
@@ -114,7 +115,7 @@ defmodule Impostor.Consumer do
   defp new_player(author) do
     author
     |> Map.take([:id, :global_name, :username])
-    |> Impostor.Game.Player.new()
+    |> Player.Standard.new()
   end
 
   defp new_clone(%{id: id} = author, players) do
@@ -127,13 +128,13 @@ defmodule Impostor.Consumer do
     author
     |> Map.take([:id, :global_name, :username])
     |> Map.put(:version, version + 1)
-    |> Impostor.Game.Player.new()
+    |> Player.Duplicable.new()
   end
 
   defp render(%{players: players, state: :phase_0_lobby} = _game) do
     players =
       players
-      |> Stream.map(&Impostor.Game.Player.screen_name/1)
+      |> Stream.map(&Player.screen_name/1)
       |> Stream.map(&("* " <> &1))
       |> Enum.join("\n")
 
@@ -181,7 +182,7 @@ defmodule Impostor.Consumer do
   defp render(%{players: [player | _] = players, state: :phase_1_words} = _game) do
     [player_1_nick | _] =
       players_nicks_and_words =
-      Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)
+      Enum.map(players, &Player.screen_name_and_words/1)
 
     players =
       Enum.map(players_nicks_and_words, &("* " <> &1))
@@ -208,7 +209,7 @@ defmodule Impostor.Consumer do
 
   defp render(%{players: players, state: :phase_2_point} = _game) do
     players_nicks_and_words =
-      Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)
+      Enum.map(players, &Player.screen_name_and_words/1)
 
     players_nicks_and_words =
       Enum.map(players_nicks_and_words, &("* " <> &1))
@@ -227,11 +228,11 @@ defmodule Impostor.Consumer do
     components =
       players
       |> Stream.map(fn player ->
-        nick = Impostor.Game.Player.screen_name(player)
+        nick = Player.screen_name(player)
 
         Nostrum.Struct.Component.Button.interaction_button(
-          "#{nick} is the impostor!",
-          "IMPOSTOR_IS_#{player.id}",
+          "#{nick}",
+          "IMPOSTOR_IS_#{Player.game_id(player)}",
           style: Nostrum.Constants.ButtonStyle.primary()
         )
       end)
