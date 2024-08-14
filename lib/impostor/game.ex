@@ -56,8 +56,12 @@ defmodule Impostor.Game do
 
   def start(_game), do: {:error, "game already started"}
 
-  def play_word(%__MODULE__{state: state}) when state == :phase_0_lobby do
+  def play_word(%__MODULE__{state: :phase_0_lobby}) do
     {:error, "cannot play words yet, the game hasn't started"}
+  end
+
+  def play_word(%__MODULE__{state: :phase_2_point}) do
+    {:error, "cannot play words anymore, time to point to the impostor"}
   end
 
   def play_word(
@@ -95,6 +99,14 @@ defmodule Impostor.Game do
           |> Map.update!(:words, &(List.wrap(&1) |> List.insert_at(-1, word)))
           |> then(&List.insert_at(other_players, -1, &1))
           |> then(&Map.put(game, :players, &1))
+
+        game =
+          if Enum.all?(game.players, &match?(%{words: [_, _, _ | _]}, &1)) do
+            game
+            |> Map.put(:state, :phase_2_point)
+          else
+            game
+          end
 
         {:ok, game}
     end

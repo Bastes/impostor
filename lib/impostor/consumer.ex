@@ -25,16 +25,19 @@ defmodule Impostor.Consumer do
 
         player_id = msg.author.id
 
-        with {:ok, game} <- Impostor.Game.Server.play_word(player_id, word) do
-          game
-          |> render()
-          |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
-        else
-          {:error, message} ->
-            dm_channel = Api.create_dm!(player_id)
+        {:ok, _game} =
+          with {:ok, game} <- Impostor.Game.Server.play_word(player_id, word) do
+            game
+            |> render()
+            |> then(&Api.edit_message(msg.channel_id, game.message_id, &1))
+          else
+            {:error, message} ->
+              dm_channel = Api.create_dm!(player_id)
 
-            Api.create_message(dm_channel.id, "error: #{message}")
-        end
+              Api.create_message(dm_channel.id, "error: #{message}")
+
+              {:error, message}
+          end
 
       _ ->
         :noop
@@ -201,5 +204,40 @@ defmodule Impostor.Consumer do
       """)
 
     [embeds: [embed], components: []]
+  end
+
+  defp render(%{players: players, state: :phase_2_point} = _game) do
+    players_nicks_and_words =
+      Enum.map(players, &Impostor.Game.Player.screen_name_and_words/1)
+
+    players_nicks_and_words =
+      Enum.map(players_nicks_and_words, &("* " <> &1))
+      |> Enum.join("\n")
+
+    embed =
+      %Embed{}
+      |> Embed.put_title("Voting for the impostor.")
+      |> Embed.put_description("""
+      Players:
+      #{players_nicks_and_words}
+
+      Now everyone, point to whom you believe is the impostor please...
+      """)
+
+    components =
+      players
+      |> Stream.map(fn player ->
+        nick = Impostor.Game.Player.screen_name(player)
+
+        Nostrum.Struct.Component.Button.interaction_button(
+          "#{nick} is the impostor!",
+          "IMPOSTOR_IS_#{player.id}",
+          style: Nostrum.Constants.ButtonStyle.primary()
+        )
+      end)
+      |> Stream.chunk_every(5)
+      |> Enum.map(&Nostrum.Struct.Component.ActionRow.action_row(components: &1))
+
+    [embeds: [embed], components: components]
   end
 end
